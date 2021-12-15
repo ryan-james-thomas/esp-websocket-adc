@@ -7,8 +7,8 @@
 #include "LittleFS.h"
 
 // Replace with your network credentials
-const char* ssid = "WaddingtonRange";
-const char* password = "AppleNewtonGravity";
+const char* ssid = "Atomlaser";
+const char* password = "becbecbec";
 
 bool ledState = 0;
 const int ledPin = 2;
@@ -30,12 +30,15 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   String s;
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
     data[len] = 0;
-    s = String(*data);
+    s = String((char*)data);
+    Serial.println(s);
     if (strcmp((char*)data, "toggle") == 0) {
       ledState = !ledState;
       notifyClients();
-    } else if (s.substring(0) == "update") {
-      delay_time = s.substring(6).toInt();
+    } else if (s.substring(0,6) == "update") {
+      Serial.println(s.substring(7));
+      delay_time = s.substring(7).toInt();
+      Serial.println(String(delay_time));
     }
   }
 }
@@ -64,7 +67,7 @@ void initWebSocket() {
 }
 
 String processor(const String& var){
-  Serial.println(var);
+  // Serial.println(var);
   if(var == "STATE"){
     if (ledState){
       return "ON";
