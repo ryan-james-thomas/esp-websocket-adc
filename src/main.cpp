@@ -2,13 +2,18 @@
 
 // Import required libraries
 #include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+#include <WiFiClient.h>
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include "LittleFS.h"
 
 // Replace with your network credentials
-const char* ssid = "Atomlaser";
-const char* password = "becbecbec";
+// const char* ssid = "Atomlaser";
+// const char* password = "becbecbec";
+
+const char* ssid = "AtomopticsLAB-2G";
+const char* password = "BeCbecBeC";
 
 bool ledState = 0;
 const int ledPin = 2;
@@ -18,7 +23,6 @@ int delay_time = 100;
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
-
 
 
 void notifyClients() {
@@ -104,9 +108,6 @@ void setup(){
   initWebSocket();
 
   // Route for root / web page
-  // server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-  //   request->send_P(200, "text/html", index_html, processor);
-  // });
 
   server.on("/",HTTP_GET,[](AsyncWebServerRequest *request) {
     request->send(LittleFS,"/index.html",String(),false,processor);

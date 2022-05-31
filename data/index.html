@@ -1,6 +1,6 @@
 <!DOCTYPE HTML><html>
 <head>
-  <title>ESP Web Server</title>
+  <title>MOT level monitor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
   html {
@@ -19,6 +19,7 @@
   .topnav {
     overflow: hidden;
     background-color: #143642;
+    margin-bottom: 10px;
   }
   body {
     margin: 0;
@@ -74,10 +75,52 @@
     canvas {
         border: 1px solid black;
     }
+
+    label {
+      margin-right: 2em;
+    }
   </style>
-<title>ESP Web Server</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+  var maxSize = 100;
+
+  var data1 = [
+      {x: 0, y: 0}
+  ];
+  var data = {
+      datasets: [{
+          label: 'MOT level',
+          backgroundColor: 'rgb(255,99,132)',
+          borderColor: 'rgb(255,99,132)',
+          data: data1,
+          showLine: true
+      }]
+  };
+  var config = {
+      type: 'scatter',
+      data: data,
+      options: {
+          x: {
+              type: 'linear',
+              position: 'bottom'
+          },
+          scales: {
+              yAxis: {
+                  min: 0,
+                  max: 100
+              },
+              xAxis: {
+                  min: 0,
+                  max: 1
+              }
+          }
+      }
+  };
+
+  var myChart;
+  var enable_update = true;
+
+
   var gateway = `ws://${window.location.hostname}/ws`;
   var websocket;
   window.addEventListener('load', onLoad);
@@ -97,165 +140,71 @@
   }
   function onMessage(event) {
     var state;
-    var data = event.data.split(",");
-    if (data[0] == "1"){
-      state = "ON";
-    }
-    else{
-      state = "OFF";
-    }
-    document.getElementById('state').innerHTML = state;
+    var data_i = event.data.split(",");
+    // if (data_i[0] == "1"){
+    //   state = "ON";
+    // }
+    // else{
+    //   state = "OFF";
+    // }
+    // document.getElementById('state').innerHTML = state;
 
-    g.setValue(parseFloat(data[1]));
+    if (enable_update) {
+      updateChart(data_i[1]);
+    }
   }
-  var g;
+
+
   function onLoad(event) {
     initWebSocket();
-    initButton();
-    g = new Gauge("test",1024);
-    g.redraw();
-  }
-  function initButton() {
-    document.getElementById('button').addEventListener('click', toggle);
-  }
-  function toggle(){
-    websocket.send('toggle');
-  }
-  function updateDelay(v) {
-      var vf = parseFloat(v);
-      if (vf < 25) {
-          vf = 25;
-      }
-      websocket.send("update," + vf.toString());
+    myChart = new Chart(document.getElementById('mot-chart'),config);
   }
 
-  class Gauge {
-      constructor(id,max_value) {
-          this.height = 250;
-          this.width = 250;
-          this.canvas = document.getElementById(id);
-          this.max = 0;
-          this.min = 0;
-          this.value = 0;
-          this.max_value = max_value;
-      }
 
-      scale(vin) {
-          return Math.PI + vin/this.max_value*Math.PI;
-      }
 
-      resize() {
-          this.canvas.style.height = '100%';
-          this.canvas.style.width = '100%';
-
-          var height = 0;
-          var width = 0;
-
-          width = (window.innerWidth > 500) ? 500 : window.innerWidth;
-          height = (window.innerHeight > 500) ? 500 : window.innerHeight;
-
-          if (width > height) {
-              this.canvas.width = height;
-              this.canvas.height = height;
-          } else {
-              this.canvas.width = width;
-              this.canvas.height = height;
-          }
-
-          this.width = this.canvas.width;
-          this.height = this.canvas.height;
-      }
-
-      redraw() {
-          this.resize();
-
-          var ctx = this.canvas.getContext('2d');
-
-          var centerX = this.width/2;
-          var centerY = this.height/2;
-          var radius = 0.4*this.width;
-          var linewidth = 20;
-
-          //Clear canvas
-          ctx.clearRect(0,0,this.width,this.height);
-          //Draw background of gauge
-          ctx.beginPath();
-          ctx.arc(centerX,centerY,radius,Math.PI,0);
-          ctx.lineCap = 'butt';
-          ctx.lineWidth = linewidth;
-          ctx.strokeStyle = "#000000";
-          ctx.stroke();
-          //Draw indicator line
-          ctx.beginPath();
-          var newangle = this.scale(this.value);
-          ctx.arc(centerX,centerY,radius,Math.PI,newangle);
-          ctx.lineCap = 'butt';
-          ctx.lineWidth = linewidth;
-          ctx.strokeStyle = "#FF0000";
-          ctx.stroke();
-          //Draw min value
-          ctx.beginPath();
-          newangle = this.scale(this.min);
-          ctx.arc(centerX,centerY,radius+linewidth,newangle-0.01,newangle+0.01);
-          ctx.lineCap = 'butt';
-          ctx.lineWidth = linewidth;
-          ctx.strokeStyle = "#FFAA00";
-          ctx.stroke();
-          //Draw max value
-          ctx.beginPath();
-          newangle = this.scale(this.max);
-          ctx.arc(centerX,centerY,radius+linewidth,newangle-0.01,newangle+0.01);
-          ctx.lineCap = 'butt';
-          ctx.lineWidth = linewidth;
-          ctx.strokeStyle = "#FFAA00";
-          ctx.stroke();
-
-          ctx.font = '60px sans-serif';
-          ctx.fillStyle = "#88ff88";
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(this.value, centerX, centerY);
-      }
-
-      setValue(v) {
-          this.value = parseFloat(v);
-          if (this.value > this.max) {
-              this.max = this.value;
-          } else if (this.value < this.min) {
-              this.min = this.value;
-          }
-          this.redraw();
-      }
-
-      reset() {
-          this.max = this.value;
-          this.min = this.value;
-          this.redraw();
-      }
-
+  function updateChart(v) {
+    var lastx = data1[data1.length - 1].x;
+    let newval = parseFloat(v)*1000/1024;
+    if (data1.length < maxSize) {
+        data1.push({x: lastx + 1, y: newval});
+    } else {
+        data1.shift();
+        data1.push({x: lastx + 1, y: newval});
+    }
+    // config.options.scales.xAxis = {min: data1[0].x,max: data1[data1.length-1].x};
+    config.options.scales.xAxis.min = data1[0].x;
+    config.options.scales.xAxis.max = data1[data1.length - 1].x;
+    config.options.scales.yAxis.min = parseFloat(document.getElementById("chart-y-min").value);
+    config.options.scales.yAxis.max = parseFloat(document.getElementById("chart-y-max").value);
+    myChart.update('none');
   }
+
+  function toggleUpdate() {
+    enable_update = !enable_update;
+  }
+
 </script>
 </head>
 <body>
   <div class="topnav">
     <h1>Analog Measurement</h1>
   </div>
-  <div class="content">
+  <!-- <div class="content">
     <div class="card">
       <h2>Output - GPIO 2</h2>
       <p class="state">state: <span id="state">%STATE%</span></p>
       <p><button id="button" class="button">Toggle</button></p>
     </div>
-  </div>
+  </div> -->
 
   <div>
-      <!-- <input type="button" value="Reset" onclick="g.reset();"/> -->
-      <p><button id="reset" class="button" onclick="g.reset();">Reset</button></p>
-      <p>Update time [ms]<input type="text" value="50" id="update-time" onchange="updateDelay(this.value)"/></p>
+      <div><label for="chart-y-max">y-max</label><input name="chart-y-max" id="chart-y-max" value="100"/></div>
+      <div><label for="chart-y-min">y-max</label><input name="chart-y-min" id="chart-y-min" value="0"/></div>
+      <p><button id="toggle" class="button" onclick="toggleUpdate()">Toggle update</button></p>
   </div>
 
   <div class="container">
-      <canvas id="test" width="250" height="250"></canvas>
+      <canvas id="mot-chart" width="500" height="500"></canvas>
   </div>
 </body>
 </html>
